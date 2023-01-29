@@ -21,7 +21,7 @@ find ./etc/alternatives -lname '/*.so.*' | \
   do
     echo ln -sf $(echo $(echo $l | sed 's|/[^/]*|/..|g')$(readlink $l) | sed 's/.....//') $l
   done | sh
-find ./etc/alternatives -lname '/*/aarch64-linux-gnu/*' | \
+find ./etc/alternatives -lname '/*/arm-linux-gnueabihf/*' | \
   while read l
   do
     echo ln -sf $(echo $(echo $l | sed 's|/[^/]*|/..|g')$(readlink $l) | sed 's/.....//') $l
@@ -31,6 +31,7 @@ popd
 #
 # Add symbolic link for cblas.h to /usr/include (required by OpenCV)
 #
+ln -sf arm-linux-gnueabihf/cblas.h "${ROOTFS_DIR}/usr/include/cblas.h"
 #ln -sf aarch64-linux-gnu/cblas.h "${ROOTFS_DIR}/usr/include/cblas.h"
 
 #
@@ -39,6 +40,10 @@ popd
 DOWNLOAD_DIR=${STAGE_WORK_DIR}/download
 mkdir -p ${DOWNLOAD_DIR}
 pushd ${DOWNLOAD_DIR}
+
+# raspbian toolchain
+wget -nc -nv \
+    https://github.com/wpilibsuite/opensdk/releases/download/v2023-7/armhf-raspi-bullseye-2023-i686-linux-gnu-Toolchain-10.2.0.tgz
 
 # opencv sources
 wget -nc -nv \
@@ -51,28 +56,28 @@ wget -nc -nv -O allwpilib.tar.gz \
     https://github.com/wpilibsuite/allwpilib/archive/v2023.2.1.tar.gz
 
 ## robotpy-build
-#wget -nc -nv -O robotpy-build.tar.gz \
-#    https://github.com/robotpy/robotpy-build/archive/2023.0.0.tar.gz
+wget -nc -nv -O robotpy-build.tar.gz \
+    https://github.com/robotpy/robotpy-build/archive/2023.0.0.tar.gz
 #
 ## pybind11
-#wget -nc -nv -O pybind11.tar.gz \
-#    https://github.com/pybind/pybind11/archive/8ece7d641ca6ce316e59fec6744b8517073bbe32.tar.gz
+wget -nc -nv -O pybind11.tar.gz \
+    https://github.com/pybind/pybind11/archive/8ece7d641ca6ce316e59fec6744b8517073bbe32.tar.gz
 #
 ## robotpy-wpiutil
-#wget -nc -nv -O robotpy-wpiutil.tar.gz \
-#    https://github.com/robotpy/robotpy-wpiutil/archive/2023.1.1.0.tar.gz
+wget -nc -nv -O robotpy-wpiutil.tar.gz \
+    https://github.com/robotpy/robotpy-wpiutil/archive/2023.1.1.0.tar.gz
 #
 ## robotpy-wpinet
-#wget -nc -nv -O robotpy-wpinet.tar.gz \
-#    https://github.com/robotpy/robotpy-wpinet/archive/2023.1.1.0.tar.gz
+wget -nc -nv -O robotpy-wpinet.tar.gz \
+    https://github.com/robotpy/robotpy-wpinet/archive/2023.1.1.0.tar.gz
 #
 ## pyntcore
-#wget -nc -nv -O pyntcore.tar.gz \
-#    https://github.com/robotpy/pyntcore/archive/2023.1.1.0.tar.gz
+wget -nc -nv -O pyntcore.tar.gz \
+    https://github.com/robotpy/pyntcore/archive/2023.1.1.0.tar.gz
 #
 ## robotpy-cscore
-#wget -nc -nv -O robotpy-cscore.tar.gz \
-#    https://github.com/robotpy/robotpy-cscore/archive/2023.1.1.0.tar.gz
+wget -nc -nv -O robotpy-cscore.tar.gz \
+    https://github.com/robotpy/robotpy-cscore/archive/2023.1.1.0.tar.gz
 
 # pixy2
 wget -nc -nv -O pixy2.tar.gz \
@@ -107,6 +112,7 @@ pushd allwpilib
 popd
 
 # robotpy-build
+rm -rf robotpy-build
 tar xzf "${DOWNLOAD_DIR}/robotpy-build.tar.gz"
 mv robotpy-build-* robotpy-build
 
@@ -154,7 +160,8 @@ popd
 NCPU=`grep -c 'cpu[0-9]' /proc/stat`
 
 export PKG_CONFIG_DIR=
-export PKG_CONFIG_LIBDIR=${ROOTFS_DIR}/usr/lib/aarch64-linux-gnu/pkgconfig:${ROOTFS_DIR}/usr/lib/pkgconfig:${ROOTFS_DIR}/usr/share/pkgconfig
+export PKG_CONFIG_LIBDIR=${ROOTFS_DIR}/usr/lib/arm-linux-gnueabihf/pkgconfig:${ROOTFS_DIR}/usr/lib/pkgconfig:${ROOTFS_DIR}/usr/share/pkgconfig
+#export PKG_CONFIG_LIBDIR=${ROOTFS_DIR}/usr/lib/aarch64-linux-gnu/pkgconfig:${ROOTFS_DIR}/usr/lib/pkgconfig:${ROOTFS_DIR}/usr/share/pkgconfig
 export PKG_CONFIG_SYSROOT_DIR=${ROOTFS_DIR}
 
 pushd ${STAGE_WORK_DIR}
@@ -176,7 +183,7 @@ build_opencv () {
         -DBUILD_SHARED_LIBS=$3 \
         -DCMAKE_BUILD_TYPE=$2 \
         -DCMAKE_DEBUG_POSTFIX=d \
-        -DCMAKE_TOOLCHAIN_FILE=${ROOTFS_DIR}/usr/src/opencv-4.6.0/platforms/linux/aarch64-gnu.toolchain.cmake \
+        -DCMAKE_TOOLCHAIN_FILE=${ROOTFS_DIR}/usr/src/opencv-4.6.0/platforms/linux/arm-gnueabi.toolchain.cmake \
         -DARM_LINUX_SYSROOT=${ROOTFS_DIR} \
         -DCMAKE_SYSROOT=${ROOTFS_DIR} \
         -DCMAKE_MAKE_PROGRAM=make \
@@ -208,8 +215,8 @@ cp -p "${ROOTFS_DIR}/usr/local/frc/share/java/opencv4/opencv-460.jar" "${ROOTFS_
 # the opencv build names the python .so with the build platform name
 # instead of the target platform, so rename it
 pushd "${ROOTFS_DIR}/usr/local/frc/lib/python3.9/site-packages/cv2/python-3.9"
-mv cv2.cpython-39-*-gnu.so cv2.cpython-39-aarch64-linux-gnu.so
-mv cv2d.cpython-39-*-gnu.so cv2d.cpython-39-aarch64-linux-gnu.so
+mv cv2.cpython-39-*-gnu.so cv2.cpython-39-arm-linux-gnueabihf.so
+mv cv2d.cpython-39-*-gnu.so cv2d.cpython-39-arm-linux-gnueabihf.so
 popd
 
 # link python package to site-packages
@@ -229,7 +236,7 @@ build_wpilib () {
         -DWITH_SIMULATION_MODULES=OFF \
 	-DWPILIB_TARGET_WARNINGS=-Wno-deprecated-declarations \
         -DCMAKE_BUILD_TYPE=$2 \
-        -DCMAKE_TOOLCHAIN_FILE=${ROOTFS_DIR}/usr/src/opencv-4.6.0/platforms/linux/aarch64-gnu.toolchain.cmake \
+        -DCMAKE_TOOLCHAIN_FILE=${ROOTFS_DIR}/usr/src/opencv-4.6.0/platforms/linux/arm-gnueabi.toolchain.cmake \
         -DARM_LINUX_SYSROOT=${ROOTFS_DIR} \
         -DCMAKE_SYSROOT=${ROOTFS_DIR} \
         -DCMAKE_MODULE_PATH=${SUB_STAGE_DIR}/files \
@@ -257,7 +264,7 @@ build_static_wpilib() {
         -DWITH_SIMULATION_MODULES=OFF \
 	-DWPILIB_TARGET_WARNINGS=-Wno-deprecated-declarations \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_TOOLCHAIN_FILE=${ROOTFS_DIR}/usr/src/opencv-4.6.0/platforms/linux/aarch64-gnu.toolchain.cmake \
+        -DCMAKE_TOOLCHAIN_FILE=${ROOTFS_DIR}/usr/src/opencv-4.6.0/platforms/linux/arm-gnueabi.toolchain.cmake \
         -DARM_LINUX_SYSROOT=${ROOTFS_DIR} \
         -DCMAKE_MODULE_PATH=${SUB_STAGE_DIR}/files \
         -DOpenCV_DIR=${ROOTFS_DIR}/usr/local/frc/share/OpenCV \
@@ -365,12 +372,12 @@ sed -i -e 's, -L/pi-gen[^ ]*,,g' "${ROOTFS_DIR}/usr/local/frc-static/lib/pkgconf
 popd
 
 on_chroot << EOF
-pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_wpiutil-2023.2.1.0-cp39-cp39-linux_aarch64.whl
-pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_wpinet-2023.2.1.0-cp39-cp39-linux_aarch64.whl
-pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/pyntcore-2023.2.1.1-cp39-cp39-linux_aarch64.whl
-pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_cscore-2023.2.1.0-cp39-cp39-linux_aarch64.whl
-pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_wpimath-2023.2.1.0-cp39-cp39-linux_aarch64.whl
-pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_apriltag-2023.2.1.0-cp39-cp39-linux_aarch64.whl
+pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_wpiutil-2023.2.1.0-cp39-cp39-linux_armhf.whl
+pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_wpinet-2023.2.1.0-cp39-cp39-linux_armhf.whl
+pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/pyntcore-2023.2.1.1-cp39-cp39-linux_armhf.whl
+pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_cscore-2023.2.1.0-cp39-cp39-armhf.whl
+pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_wpimath-2023.2.1.0-cp39-cp39-armhf.whl
+pip3 install https://www.tortall.net/~robotpy/wheels/2023/raspbian/robotpy_apriltag-2023.2.1.0-cp39-cp39-armhf.whl
 EOF
 
 
@@ -540,9 +547,12 @@ rm -rf "${EXTRACT_DIR}/pixy2/build"
 # Split debug info
 
 split_debug () {
-    aarch64-linux-gnu-objcopy --only-keep-debug $1 $1.debug
-    aarch64-linux-gnu-strip -g $1
-    aarch64-linux-gnu-objcopy --add-gnu-debuglink=$1.debug $1
+#    aarch64-linux-gnu-objcopy --only-keep-debug $1 $1.debug
+#    aarch64-linux-gnu-strip -g $1
+#    aarch64-linux-gnu-objcopy --add-gnu-debuglink=$1.debug $1
+    armv6-bullseye-linux-gnueabihf-objcopy --only-keep-debug $1 $1.debug
+    armv6-bullseye-linux-gnueabihf-strip -g $1
+    armv6-bullseye-linux-gnueabihf-objcopy --add-gnu-debuglink=$1.debug $1
 }
 
 split_debug_so () {
